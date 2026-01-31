@@ -1,6 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --color-surface: #ffffff;
+  --color-bg: #ffffff;
+  --color-surface: #f8fafc;
+  --color-border: #e2e8f0;
   --color-text: #0f172a;
+  --color-muted: #64748b;
+  --color-primary: #2563eb;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
 }

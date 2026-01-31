@@ -36,7 +36,7 @@ export function HierarchicalCombobox({
   const ITEM_HEIGHT = 32
   const VIEWPORT_HEIGHT = 256
 
-  // load root nodes
+  // Load root nodes
   useEffect(() => {
     loadChildren(null).then((nodes) => {
       setStore((s) => addNodes(s, null, nodes))
@@ -78,9 +78,7 @@ export function HierarchicalCombobox({
     if (store.childrenMap[id] || loading.has(id)) return
 
     setLoading((s) => new Set(s).add(id))
-
     const children = await loadChildren(id)
-
     setStore((s) => addNodes(s, id, children))
     setExpanded((s) => new Set(s).add(id))
     setLoading((s) => {
@@ -91,11 +89,12 @@ export function HierarchicalCombobox({
   }
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full max-w-md text-[var(--color-text)]">
       <label htmlFor={inputId} className="sr-only">
         Hierarchical combobox
       </label>
 
+      {/* Input */}
       <input
         id={inputId}
         role="combobox"
@@ -104,91 +103,119 @@ export function HierarchicalCombobox({
         aria-autocomplete="list"
         aria-activedescendant={activeId ?? undefined}
         placeholder={placeholder}
-        className="w-full border rounded-md p-2 focus:outline-none focus:ring"
+        value={search}
         onFocus={() => setIsOpen(true)}
         onChange={(e) => setSearch(e.target.value)}
-        value={search}
+        className="
+          w-full rounded-md border border-[var(--color-border)]
+          bg-[var(--color-bg)] px-3 py-2 text-sm
+          placeholder:text-[var(--color-muted)]
+          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]
+        "
       />
 
+      {/* Dropdown */}
       {isOpen && (
         <div
           id={listboxId}
           role="tree"
           tabIndex={-1}
           onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-          className="absolute z-10 mt-1 w-full overflow-auto border rounded-md bg-white"
           style={{ height: VIEWPORT_HEIGHT }}
+          className="
+            absolute z-10 mt-2 w-full overflow-auto
+            rounded-md border border-[var(--color-border)]
+            bg-[var(--color-bg)] shadow-lg
+          "
         >
           <div style={{ height: v.totalHeight, position: "relative" }}>
             <div style={{ transform: `translateY(${v.offsetY}px)` }}>
-              {flatNodes
-                .slice(v.startIndex, v.endIndex + 1)
-                .map((node) => {
-                  const data = store.nodes[node.id]
-                  const isExpanded = search
-                    ? true
-                    : expanded.has(node.id)
-                  const state = getSelectionState(
-                    store,
-                    selected,
-                    node.id
-                  )
+              <div className="p-1">
+                {flatNodes
+                  .slice(v.startIndex, v.endIndex + 1)
+                  .map((node) => {
+                    const data = store.nodes[node.id]
+                    const isExpanded = search
+                      ? true
+                      : expanded.has(node.id)
+                    const state = getSelectionState(
+                      store,
+                      selected,
+                      node.id
+                    )
 
-                  return (
-                    <div
-                      key={node.id}
-                      id={node.id}
-                      role="treeitem"
-                      aria-expanded={
-                        data.hasChildren ? isExpanded : undefined
-                      }
-                      aria-checked={state !== "unchecked"}
-                      className="h-8 flex items-center text-sm px-2 cursor-pointer"
-                      style={{ paddingLeft: node.depth * 16 }}
-                      onMouseEnter={() => setActiveId(node.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={state === "checked"}
-                        ref={(el) => {
-                          if (el)
-                            el.indeterminate =
-                              state === "indeterminate"
-                        }}
-                        onChange={() =>
-                          setSelected((s) =>
-                            toggleSelection(store, s, node.id)
-                          )
+                    return (
+                      <div
+                        key={node.id}
+                        id={node.id}
+                        role="treeitem"
+                        aria-expanded={
+                          data.hasChildren ? isExpanded : undefined
                         }
-                        className="mr-2"
-                      />
-
-                      {data.hasChildren && !search && (
-                        <button
-                          type="button"
-                          className="mr-1 text-xs"
-                          onClick={() =>
-                            isExpanded
-                              ? setExpanded((s) => {
-                                  const next = new Set(s)
-                                  next.delete(node.id)
-                                  return next
-                                })
-                              : expandNode(node.id)
+                        aria-checked={state !== "unchecked"}
+                        onMouseEnter={() => setActiveId(node.id)}
+                        style={{ paddingLeft: node.depth * 20 }}
+                        className="
+                          h-8 flex items-center text-sm
+                          rounded px-2 cursor-pointer
+                          hover:bg-slate-100
+                          focus:bg-slate-100
+                        "
+                      >
+                        {/* Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={state === "checked"}
+                          ref={(el) => {
+                            if (el)
+                              el.indeterminate =
+                                state === "indeterminate"
+                          }}
+                          onChange={() =>
+                            setSelected((s) =>
+                              toggleSelection(store, s, node.id)
+                            )
                           }
-                        >
-                          {loading.has(node.id)
-                            ? "⏳"
-                            : isExpanded
-                            ? "▾"
-                            : "▸"}
-                        </button>
-                      )}
+                          className="
+                            mr-2 h-4 w-4 rounded border border-slate-300
+                            text-[var(--color-primary)]
+                            focus:ring-[var(--color-primary)]
+                          "
+                        />
 
-                      {data.label}
-                    </div>
-                  )
-                })}
+                        {/* Expand button */}
+                        {data.hasChildren && !search && (
+                          <button
+                            type="button"
+                            className="
+                              mr-1 text-xs text-slate-500
+                              hover:text-slate-800
+                              focus:outline-none
+                            "
+                            onClick={() =>
+                              isExpanded
+                                ? setExpanded((s) => {
+                                    const next = new Set(s)
+                                    next.delete(node.id)
+                                    return next
+                                  })
+                                : expandNode(node.id)
+                            }
+                          >
+                            {loading.has(node.id)
+                              ? "⏳"
+                              : isExpanded
+                              ? "▾"
+                              : "▸"}
+                          </button>
+                        )}
+
+                        {/* Label */}
+                        <span>{data.label}</span>
+                      </div>
+                    )
+                  })}
+              </div>
             </div>
           </div>
         </div>

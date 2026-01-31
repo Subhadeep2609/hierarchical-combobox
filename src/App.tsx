@@ -1,35 +1,30 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { HierarchicalCombobox } from "./components/HierarchicalCombobox/HierarchicalCombobox"
+import type { TreeNode } from "./components/HierarchicalCombobox/types"
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+const mockTree: Record<string | null, TreeNode[]> = {
+  null: [
+    { id: "a", label: "Fruits", parentId: null, hasChildren: true },
+    { id: "b", label: "Vegetables", parentId: null, hasChildren: true },
+  ],
+  a: [
+    { id: "a1", label: "Apple", parentId: "a", hasChildren: false },
+    { id: "a2", label: "Banana", parentId: "a", hasChildren: false },
+  ],
+  b: [
+    { id: "b1", label: "Carrot", parentId: "b", hasChildren: false },
+    { id: "b2", label: "Potato", parentId: "b", hasChildren: false },
+  ],
 }
 
-export default App
+export default function App() {
+  return (
+    <div className="min-h-screen flex items-start justify-center p-8 bg-slate-50">
+      <HierarchicalCombobox
+        loadChildren={async (parentId) => {
+          await new Promise((r) => setTimeout(r, 300))
+          return mockTree[parentId] ?? []
+        }}
+      />
+    </div>
+  )
+}
