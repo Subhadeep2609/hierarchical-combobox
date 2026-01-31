@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+:root {
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+}
