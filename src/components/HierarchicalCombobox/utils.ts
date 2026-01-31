@@ -1,4 +1,10 @@
-import { TreeNode, TreeNodeId, TreeStore, FlatNode } from "./types"
+import {
+  TreeNode,
+  TreeNodeId,
+  TreeStore,
+  FlatNode,
+  SelectionState,
+} from "./types"
 
 export function buildInitialStore(): TreeStore {
   return {
@@ -45,4 +51,65 @@ export function flattenTree(
       flattenTree(store, expanded, id, depth + 1, result)
     }
   }
+}
+
+/* =======================
+   Selection logic
+======================= */
+
+export function getDescendants(
+  store: TreeStore,
+  id: TreeNodeId,
+  result: TreeNodeId[] = []
+) {
+  const children = store.childrenMap[id] ?? []
+  for (const child of children) {
+    result.push(child)
+    getDescendants(store, child, result)
+  }
+  return result
+}
+
+export function getSelectionState(
+  store: TreeStore,
+  selected: Set<TreeNodeId>,
+  id: TreeNodeId
+): SelectionState {
+  const children = store.childrenMap[id]
+
+  if (!children || children.length === 0) {
+    return selected.has(id) ? "checked" : "unchecked"
+  }
+
+  let checked = 0
+  for (const child of children) {
+    const state = getSelectionState(store, selected, child)
+    if (state === "checked") checked++
+    if (state === "indeterminate") return "indeterminate"
+  }
+
+  if (checked === 0) return "unchecked"
+  if (checked === children.length) return "checked"
+  return "indeterminate"
+}
+
+export function toggleSelection(
+  store: TreeStore,
+  selected: Set<TreeNodeId>,
+  id: TreeNodeId
+): Set<TreeNodeId> {
+  const next = new Set(selected)
+  const descendants = getDescendants(store, id)
+
+  const shouldSelect = !next.has(id)
+
+  if (shouldSelect) {
+    next.add(id)
+    descendants.forEach((d) => next.add(d))
+  } else {
+    next.delete(id)
+    descendants.forEach((d) => next.delete(d))
+  }
+
+  return next
 }

@@ -5,7 +5,13 @@ import type {
   FlatNode,
 } from "./types"
 import { useVirtualList } from "./useVirtualList"
-import { buildInitialStore, addNodes, flattenTree } from "./utils"
+import {
+  buildInitialStore,
+  addNodes,
+  flattenTree,
+  toggleSelection,
+  getSelectionState,
+} from "./utils"
 
 export function HierarchicalCombobox({
   loadChildren,
@@ -20,11 +26,11 @@ export function HierarchicalCombobox({
 
   const [store, setStore] = useState(buildInitialStore)
   const [expanded, setExpanded] = useState<Set<TreeNodeId>>(new Set())
+  const [selected, setSelected] = useState<Set<TreeNodeId>>(new Set())
 
   const ITEM_HEIGHT = 32
   const VIEWPORT_HEIGHT = 256
 
-  // load root nodes
   useEffect(() => {
     loadChildren(null).then((nodes) => {
       setStore((s) => addNodes(s, null, nodes))
@@ -60,10 +66,6 @@ export function HierarchicalCombobox({
         placeholder={placeholder}
         className="w-full border rounded-md p-2 focus:outline-none focus:ring"
         onFocus={() => setIsOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown") setIsOpen(true)
-          if (e.key === "Escape") setIsOpen(false)
-        }}
       />
 
       {isOpen && (
@@ -75,48 +77,65 @@ export function HierarchicalCombobox({
           className="absolute z-10 mt-1 w-full overflow-auto border rounded-md bg-white"
           style={{ height: VIEWPORT_HEIGHT }}
         >
-          <div
-            style={{
-              height: v.totalHeight,
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                transform: `translateY(${v.offsetY}px)`,
-              }}
-            >
+          <div style={{ height: v.totalHeight, position: "relative" }}>
+            <div style={{ transform: `translateY(${v.offsetY}px)` }}>
               {flatNodes
                 .slice(v.startIndex, v.endIndex + 1)
                 .map((node) => {
                   const data = store.nodes[node.id]
                   const isExpanded = expanded.has(node.id)
+                  const state = getSelectionState(
+                    store,
+                    selected,
+                    node.id
+                  )
 
                   return (
                     <div
                       key={node.id}
                       id={node.id}
                       role="treeitem"
-                      aria-expanded={data.hasChildren ? isExpanded : undefined}
+                      aria-expanded={
+                        data.hasChildren ? isExpanded : undefined
+                      }
+                      aria-checked={state !== "unchecked"}
                       className="h-8 flex items-center text-sm px-2 cursor-pointer"
                       style={{ paddingLeft: node.depth * 16 }}
-                      onClick={() => {
-                        if (!data.hasChildren) return
-                        setExpanded((prev) => {
-                          const next = new Set(prev)
-                          next.has(node.id)
-                            ? next.delete(node.id)
-                            : next.add(node.id)
-                          return next
-                        })
-                      }}
                       onMouseEnter={() => setActiveId(node.id)}
                     >
+                      <input
+                        type="checkbox"
+                        checked={state === "checked"}
+                        ref={(el) => {
+                          if (el)
+                            el.indeterminate =
+                              state === "indeterminate"
+                        }}
+                        onChange={() =>
+                          setSelected((s) =>
+                            toggleSelection(store, s, node.id)
+                          )
+                        }
+                        className="mr-2"
+                      />
+
                       {data.hasChildren && (
-                        <span className="mr-1 text-xs">
+                        <span
+                          className="mr-1 text-xs"
+                          onClick={() => {
+                            setExpanded((prev) => {
+                              const next = new Set(prev)
+                              next.has(node.id)
+                                ? next.delete(node.id)
+                                : next.add(node.id)
+                              return next
+                            })
+                          }}
+                        >
                           {isExpanded ? "▾" : "▸"}
                         </span>
                       )}
+
                       {data.label}
                     </div>
                   )

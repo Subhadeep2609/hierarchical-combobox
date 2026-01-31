@@ -3,12 +3,8 @@ export type TreeNodeId = string
 export interface TreeNode {
   id: TreeNodeId
   label: string
-
-  // structure
   parentId: TreeNodeId | null
   hasChildren: boolean
-
-  // async state
   isLoading?: boolean
   isError?: boolean
 }
@@ -21,8 +17,8 @@ export type TreeStore = {
 
 export interface FlatNode {
   id: TreeNodeId
-  depth: number
   parentId: TreeNodeId | null
+  depth: number
 }
 
 export type SelectionState =
@@ -30,9 +26,11 @@ export type SelectionState =
   | "unchecked"
   | "indeterminate"
 
+export type LoadChildren = (
+  parentId: TreeNodeId | null
+) => Promise<TreeNode[]>
 
 export interface HierarchicalComboboxProps {
   loadChildren: LoadChildren
   placeholder?: string
 }
-
