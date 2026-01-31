@@ -11,6 +11,9 @@ import {
   flattenTree,
   toggleSelection,
   getSelectionState,
+  findMatchingIds,
+  buildSearchExpandedSet,
+  filterFlatNodes,
 } from "./utils"
 
 export function HierarchicalCombobox({
@@ -23,6 +26,7 @@ export function HierarchicalCombobox({
   const [isOpen, setIsOpen] = useState(false)
   const [activeId, setActiveId] = useState<TreeNodeId | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
+  const [search, setSearch] = useState("")
 
   const [store, setStore] = useState(buildInitialStore)
   const [expanded, setExpanded] = useState<Set<TreeNodeId>>(new Set())
@@ -37,11 +41,29 @@ export function HierarchicalCombobox({
     })
   }, [loadChildren])
 
+  const searchMatches = useMemo(
+    () => (search ? findMatchingIds(store, search) : null),
+    [store, search]
+  )
+
+  const searchExpanded = useMemo(
+    () =>
+      searchMatches
+        ? buildSearchExpandedSet(store, searchMatches)
+        : expanded,
+    [store, searchMatches, expanded]
+  )
+
   const flatNodes: FlatNode[] = useMemo(() => {
     const result: FlatNode[] = []
-    flattenTree(store, expanded, null, 0, result)
-    return result
-  }, [store, expanded])
+    flattenTree(store, searchExpanded, null, 0, result)
+    return searchMatches
+      ? filterFlatNodes(
+          result,
+          new Set([...searchMatches, ...searchExpanded])
+        )
+      : result
+  }, [store, searchExpanded, searchMatches])
 
   const v = useVirtualList({
     itemCount: flatNodes.length,
@@ -66,6 +88,8 @@ export function HierarchicalCombobox({
         placeholder={placeholder}
         className="w-full border rounded-md p-2 focus:outline-none focus:ring"
         onFocus={() => setIsOpen(true)}
+        onChange={(e) => setSearch(e.target.value)}
+        value={search}
       />
 
       {isOpen && (
@@ -83,7 +107,9 @@ export function HierarchicalCombobox({
                 .slice(v.startIndex, v.endIndex + 1)
                 .map((node) => {
                   const data = store.nodes[node.id]
-                  const isExpanded = expanded.has(node.id)
+                  const isExpanded = search
+                    ? true
+                    : expanded.has(node.id)
                   const state = getSelectionState(
                     store,
                     selected,
@@ -119,7 +145,7 @@ export function HierarchicalCombobox({
                         className="mr-2"
                       />
 
-                      {data.hasChildren && (
+                      {data.hasChildren && !search && (
                         <span
                           className="mr-1 text-xs"
                           onClick={() => {
