@@ -31,10 +31,12 @@ export function HierarchicalCombobox({
   const [store, setStore] = useState(buildInitialStore)
   const [expanded, setExpanded] = useState<Set<TreeNodeId>>(new Set())
   const [selected, setSelected] = useState<Set<TreeNodeId>>(new Set())
+  const [loading, setLoading] = useState<Set<TreeNodeId>>(new Set())
 
   const ITEM_HEIGHT = 32
   const VIEWPORT_HEIGHT = 256
 
+  // load root nodes
   useEffect(() => {
     loadChildren(null).then((nodes) => {
       setStore((s) => addNodes(s, null, nodes))
@@ -71,6 +73,22 @@ export function HierarchicalCombobox({
     viewportHeight: VIEWPORT_HEIGHT,
     scrollTop,
   })
+
+  const expandNode = async (id: TreeNodeId) => {
+    if (store.childrenMap[id] || loading.has(id)) return
+
+    setLoading((s) => new Set(s).add(id))
+
+    const children = await loadChildren(id)
+
+    setStore((s) => addNodes(s, id, children))
+    setExpanded((s) => new Set(s).add(id))
+    setLoading((s) => {
+      const next = new Set(s)
+      next.delete(id)
+      return next
+    })
+  }
 
   return (
     <div className="relative w-full max-w-md">
@@ -146,20 +164,25 @@ export function HierarchicalCombobox({
                       />
 
                       {data.hasChildren && !search && (
-                        <span
+                        <button
+                          type="button"
                           className="mr-1 text-xs"
-                          onClick={() => {
-                            setExpanded((prev) => {
-                              const next = new Set(prev)
-                              next.has(node.id)
-                                ? next.delete(node.id)
-                                : next.add(node.id)
-                              return next
-                            })
-                          }}
+                          onClick={() =>
+                            isExpanded
+                              ? setExpanded((s) => {
+                                  const next = new Set(s)
+                                  next.delete(node.id)
+                                  return next
+                                })
+                              : expandNode(node.id)
+                          }
                         >
-                          {isExpanded ? "▾" : "▸"}
-                        </span>
+                          {loading.has(node.id)
+                            ? "⏳"
+                            : isExpanded
+                            ? "▾"
+                            : "▸"}
+                        </button>
                       )}
 
                       {data.label}
