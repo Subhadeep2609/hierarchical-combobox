@@ -1,6 +1,11 @@
-import { useId, useState } from "react"
-import type { HierarchicalComboboxProps } from "./types"
+import { useEffect, useId, useMemo, useState } from "react"
+import type {
+  HierarchicalComboboxProps,
+  TreeNodeId,
+  FlatNode,
+} from "./types"
 import { useVirtualList } from "./useVirtualList"
+import { buildInitialStore, addNodes, flattenTree } from "./utils"
 
 export function HierarchicalCombobox({
   loadChildren,
@@ -10,19 +15,30 @@ export function HierarchicalCombobox({
   const listboxId = useId()
 
   const [isOpen, setIsOpen] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<TreeNodeId | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
+
+  const [store, setStore] = useState(buildInitialStore)
+  const [expanded, setExpanded] = useState<Set<TreeNodeId>>(new Set())
 
   const ITEM_HEIGHT = 32
   const VIEWPORT_HEIGHT = 256
 
-  const fakeRows = Array.from({ length: 1000 }, (_, i) => ({
-    id: String(i),
-    label: `Node ${i}`,
-  }))
+  // load root nodes
+  useEffect(() => {
+    loadChildren(null).then((nodes) => {
+      setStore((s) => addNodes(s, null, nodes))
+    })
+  }, [loadChildren])
+
+  const flatNodes: FlatNode[] = useMemo(() => {
+    const result: FlatNode[] = []
+    flattenTree(store, expanded, null, 0, result)
+    return result
+  }, [store, expanded])
 
   const v = useVirtualList({
-    itemCount: fakeRows.length,
+    itemCount: flatNodes.length,
     itemHeight: ITEM_HEIGHT,
     viewportHeight: VIEWPORT_HEIGHT,
     scrollTop,
@@ -70,16 +86,41 @@ export function HierarchicalCombobox({
                 transform: `translateY(${v.offsetY}px)`,
               }}
             >
-              {fakeRows
+              {flatNodes
                 .slice(v.startIndex, v.endIndex + 1)
-                .map((row) => (
-                  <div
-                    key={row.id}
-                    className="h-8 px-2 flex items-center border-b text-sm"
-                  >
-                    {row.label}
-                  </div>
-                ))}
+                .map((node) => {
+                  const data = store.nodes[node.id]
+                  const isExpanded = expanded.has(node.id)
+
+                  return (
+                    <div
+                      key={node.id}
+                      id={node.id}
+                      role="treeitem"
+                      aria-expanded={data.hasChildren ? isExpanded : undefined}
+                      className="h-8 flex items-center text-sm px-2 cursor-pointer"
+                      style={{ paddingLeft: node.depth * 16 }}
+                      onClick={() => {
+                        if (!data.hasChildren) return
+                        setExpanded((prev) => {
+                          const next = new Set(prev)
+                          next.has(node.id)
+                            ? next.delete(node.id)
+                            : next.add(node.id)
+                          return next
+                        })
+                      }}
+                      onMouseEnter={() => setActiveId(node.id)}
+                    >
+                      {data.hasChildren && (
+                        <span className="mr-1 text-xs">
+                          {isExpanded ? "▾" : "▸"}
+                        </span>
+                      )}
+                      {data.label}
+                    </div>
+                  )
+                })}
             </div>
           </div>
         </div>
